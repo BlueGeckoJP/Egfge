@@ -6,9 +6,31 @@ import sys
 
 from PySide6 import QtGui, QtWidgets
 
-current_path = "/"
-moving_history: list[str] = ["/"]
+current_path = os.path.expanduser("~")
+moving_history: list[str] = [os.path.expanduser("~")]
 current_moving_index = 0
+
+places_list = [
+    "Places",
+    "",
+    "Home",
+    "Desktop",
+    "Documents",
+    "Downloads",
+    "Music",
+    "Pictures",
+    "Videos",
+]
+
+places_path_list = [
+    "~",
+    "~/Desktop",
+    "~/Documents",
+    "~/Downloads",
+    "~/Music",
+    "~/Pictures",
+    "~/Videos",
+]
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -33,11 +55,16 @@ class MainWindow(QtWidgets.QWidget):
 
         self.path_lineedit = QtWidgets.QLineEdit()
         self.path_lineedit.returnPressed.connect(self.onPathLineEditReturnPressed)
+        self.path_lineedit
 
-        leftpanel_list = QtWidgets.QListView()
-        self.leftpanel_list_model = QtGui.QStandardItemModel(leftpanel_list)
-        leftpanel_list.setModel(self.leftpanel_list_model)
-        leftpanel_list.show()
+        self.leftpanel_list = QtWidgets.QListView()
+        self.leftpanel_list_model = QtGui.QStandardItemModel(self.leftpanel_list)
+        self.leftpanel_list.setModel(self.leftpanel_list_model)
+        self.leftpanel_list.setEditTriggers(
+            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        self.leftpanel_list.doubleClicked.connect(self.onLeftPanelListClicked)
+        self.leftpanel_list.show()
 
         self.file_list = QtWidgets.QTableView()
         self.file_list_model = QtGui.QStandardItemModel(self.file_list)
@@ -58,7 +85,7 @@ class MainWindow(QtWidgets.QWidget):
         topbar_layout.addWidget(after_button)
         topbar_layout.addWidget(self.path_lineedit)
 
-        leftpanel_layout.addWidget(leftpanel_list)
+        leftpanel_layout.addWidget(self.leftpanel_list)
 
         file_layout.addWidget(self.file_list)
 
@@ -73,6 +100,7 @@ class MainWindow(QtWidgets.QWidget):
 
         # Other ===============================================================
         self.updateFileList()
+        self.initPlaces()
 
     def updateFileList(self):
         self.file_list_model.removeRows(0, self.file_list_model.rowCount())
@@ -110,6 +138,12 @@ class MainWindow(QtWidgets.QWidget):
         current_moving_index += 1
         self.updateFileList()
 
+    def initPlaces(self):
+        for place in places_list:
+            item = QtGui.QStandardItem()
+            item.setText(place)
+            self.leftpanel_list_model.appendRow(item)
+
     def onPathLineEditReturnPressed(self):
         global current_path
         current_path = self.path_lineedit.text()
@@ -126,6 +160,14 @@ class MainWindow(QtWidgets.QWidget):
         elif os.path.isdir(filepath):
             current_path = filepath
             self.moveDirectory()
+
+    def onLeftPanelListClicked(self):
+        global current_path
+        row = self.leftpanel_list.selectedIndexes()[0].row()
+        if row == 0 or row == 1:
+            return
+        current_path = os.path.expanduser(places_path_list[row - 2])
+        self.moveDirectory()
 
     def onBeforeButtonClicked(self):
         global current_path, current_moving_index
