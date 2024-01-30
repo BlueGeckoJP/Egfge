@@ -1,3 +1,4 @@
 /todo.txt
 /.venv/
 /.mypy_cache/
+/widgets/__pycache__/

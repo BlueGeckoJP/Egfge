@@ -6,21 +6,11 @@ import sys
 
 from PySide6 import QtGui, QtWidgets
 
+from widgets import filelist, leftpaneltabwidget
+
 current_path = os.path.expanduser("~")
 moving_history: list[str] = [os.path.expanduser("~")]
 current_moving_index = 0
-
-places_list = [
-    "Places",
-    "",
-    "Home",
-    "Desktop",
-    "Documents",
-    "Downloads",
-    "Music",
-    "Pictures",
-    "Videos",
-]
 
 places_path_list = [
     "~",
@@ -55,37 +45,21 @@ class MainWindow(QtWidgets.QWidget):
 
         self.path_lineedit = QtWidgets.QLineEdit()
         self.path_lineedit.returnPressed.connect(self.onPathLineEditReturnPressed)
-        self.path_lineedit
 
-        self.leftpanel_list = QtWidgets.QListView()
-        self.leftpanel_list_model = QtGui.QStandardItemModel(self.leftpanel_list)
-        self.leftpanel_list.setModel(self.leftpanel_list_model)
-        self.leftpanel_list.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+        self.leftpanel_widget = leftpaneltabwidget.LeftPanelTabWidget()
+        self.leftpanel_widget.place_list.list_view.doubleClicked.connect(
+            self.onPlacesListClicked
         )
-        self.leftpanel_list.doubleClicked.connect(self.onLeftPanelListClicked)
-        self.leftpanel_list.show()
 
-        self.file_list = QtWidgets.QTableView()
-        self.file_list_model = QtGui.QStandardItemModel(self.file_list)
-        self.file_list_model.setHorizontalHeaderLabels(["名前", "サイズ", " 変更日時"])
-        self.file_list.setModel(self.file_list_model)
-        self.file_list.verticalHeader().setVisible(False)
-        self.file_list.horizontalHeader().setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.Stretch
-        )
-        self.file_list.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
+        self.file_list = filelist.FileList()
         self.file_list.doubleClicked.connect(self.onFileListClicked)
-        self.file_list.show()
 
         # Add Widgets =========================================================
         topbar_layout.addWidget(before_button)
         topbar_layout.addWidget(after_button)
         topbar_layout.addWidget(self.path_lineedit)
 
-        leftpanel_layout.addWidget(self.leftpanel_list)
+        leftpanel_layout.addWidget(self.leftpanel_widget)
 
         file_layout.addWidget(self.file_list)
 
@@ -100,10 +74,9 @@ class MainWindow(QtWidgets.QWidget):
 
         # Other ===============================================================
         self.updateFileList()
-        self.initPlaces()
 
     def updateFileList(self):
-        self.file_list_model.removeRows(0, self.file_list_model.rowCount())
+        self.file_list.item_model.removeRows(0, self.file_list.item_model.rowCount())
         path = os.path.join(current_path, "*")
         file_list = glob.glob(path)
         for file in file_list:
@@ -114,18 +87,20 @@ class MainWindow(QtWidgets.QWidget):
             elif os.path.isdir(file):
                 filesize = convertFileSize(getDirectorySize(file))
                 item_type = "folder"
-            filemodifiedtime = datetime.datetime.fromtimestamp(os.stat(file).st_mtime)
-            filemodifiedtime = filemodifiedtime.strftime("%Y/%m/%d %H:%M")
+            file_modified_time_ = datetime.datetime.fromtimestamp(
+                os.stat(file).st_mtime
+            )
+            file_modified_time = file_modified_time_.strftime("%Y/%m/%d %H:%M")
 
             list_row = list()
             item = IconAndFileNameItem(item_type)
             item.setText(filename)
             list_row.append(item)
-            for info in [filesize, filemodifiedtime]:
+            for info in [filesize, file_modified_time]:
                 item = QtGui.QStandardItem()
                 item.setText(info)
                 list_row.append(item)
-            self.file_list_model.appendRow(list_row)
+            self.file_list.item_model.appendRow(list_row)
 
         self.path_lineedit.setText(current_path)
 
@@ -138,12 +113,6 @@ class MainWindow(QtWidgets.QWidget):
         current_moving_index += 1
         self.updateFileList()
 
-    def initPlaces(self):
-        for place in places_list:
-            item = QtGui.QStandardItem()
-            item.setText(place)
-            self.leftpanel_list_model.appendRow(item)
-
     def onPathLineEditReturnPressed(self):
         global current_path
         current_path = self.path_lineedit.text()
@@ -152,7 +121,7 @@ class MainWindow(QtWidgets.QWidget):
     def onFileListClicked(self):
         global current_path
         row = self.file_list.selectedIndexes()[0].row()
-        row_content = self.file_list_model.item(row, 0).text()
+        row_content = self.file_list.item_model.item(row, 0).text()
         filepath = os.path.join(current_path, row_content)
 
         if os.path.isfile(filepath):
@@ -161,12 +130,10 @@ class MainWindow(QtWidgets.QWidget):
             current_path = filepath
             self.moveDirectory()
 
-    def onLeftPanelListClicked(self):
+    def onPlacesListClicked(self):
         global current_path
-        row = self.leftpanel_list.selectedIndexes()[0].row()
-        if row == 0 or row == 1:
-            return
-        current_path = os.path.expanduser(places_path_list[row - 2])
+        row = self.leftpanel_widget.place_list.list_view.selectedIndexes()[0].row()
+        current_path = os.path.expanduser(places_path_list[row])
         self.moveDirectory()
 
     def onBeforeButtonClicked(self):
