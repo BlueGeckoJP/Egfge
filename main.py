@@ -167,7 +167,7 @@ class MainWindow(QtWidgets.QWidget):
             item = QtGui.QStandardItem()
             item.setText(file)
             self.leftpanel_widget.groups_widget.list_view.item_model.appendRow(item)
-        similarityCheck(file_list)
+        print(similarityCheck(file_list))
 
 
 class IconAndFileNameItem(QtGui.QStandardItem):
@@ -200,6 +200,7 @@ def getDirectorySize(path):
 
 
 def similarityCheck(files: list[str]):
+    groups = []
     for file1 in files:
         group = []
         group.append(file1)
@@ -207,8 +208,9 @@ def similarityCheck(files: list[str]):
             ratio = difflib.SequenceMatcher(None, file1, file2).ratio()
             if ratio > 0.6:
                 group.append(file2)
+        groups.append(group)
 
-        print(group)
+    return groups
 
 
 if __name__ == "__main__":
