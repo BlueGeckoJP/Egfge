@@ -1,4 +1,5 @@
 import datetime
+import difflib
 import glob
 import math
 import os
@@ -49,6 +50,9 @@ class MainWindow(QtWidgets.QWidget):
         self.leftpanel_widget = leftpaneltabwidget.LeftPanelTabWidget()
         self.leftpanel_widget.place_list.list_view.doubleClicked.connect(
             self.onPlacesListClicked
+        )
+        self.leftpanel_widget.groups_widget.combo_box.currentIndexChanged.connect(
+            self.onGroupsWidgetComboBoxChanged
         )
 
         self.file_list = filelist.FileList()
@@ -152,6 +156,19 @@ class MainWindow(QtWidgets.QWidget):
         current_path = moving_history[current_moving_index]
         self.updateFileList()
 
+    def onGroupsWidgetComboBoxChanged(self):
+        self.leftpanel_widget.groups_widget.list_view.item_model.clear()
+        path = os.path.join(current_path, "*")
+        file_list = glob.glob(path)
+        file_list = list(filter(lambda x: os.path.isfile(x), file_list))
+        file_list = list(map(lambda x: os.path.basename(x), file_list))
+        file_list.sort()
+        for file in file_list:
+            item = QtGui.QStandardItem()
+            item.setText(file)
+            self.leftpanel_widget.groups_widget.list_view.item_model.appendRow(item)
+        similarityCheck(file_list)
+
 
 class IconAndFileNameItem(QtGui.QStandardItem):
     def __init__(self, type, parent=None):
@@ -180,6 +197,18 @@ def getDirectorySize(path):
     except PermissionError:
         pass
     return total
+
+
+def similarityCheck(files: list[str]):
+    for file1 in files:
+        group = []
+        group.append(file1)
+        for file2 in files:
+            ratio = difflib.SequenceMatcher(None, file1, file2).ratio()
+            if ratio > 0.6:
+                group.append(file2)
+
+        print(group)
 
 
 if __name__ == "__main__":
