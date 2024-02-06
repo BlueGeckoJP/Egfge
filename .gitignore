@@ -2,3 +2,4 @@
 /.venv/
 /.mypy_cache/
 /widgets/__pycache__/
+/__pycache__/

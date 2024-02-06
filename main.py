@@ -7,11 +7,8 @@ import sys
 
 from PySide6 import QtGui, QtWidgets
 
+import globalvalues
 from widgets import filelist, leftpaneltabwidget
-
-current_path = os.path.expanduser("~")
-moving_history: list[str] = [os.path.expanduser("~")]
-current_moving_index = 0
 
 places_path_list = [
     "~",
@@ -22,6 +19,9 @@ places_path_list = [
     "~/Pictures",
     "~/Videos",
 ]
+
+gv = globalvalues.GlobalValues()
+gv.init()
 
 
 class MainWindow(QtWidgets.QWidget):
@@ -81,7 +81,7 @@ class MainWindow(QtWidgets.QWidget):
 
     def updateFileList(self):
         self.file_list.item_model.removeRows(0, self.file_list.item_model.rowCount())
-        path = os.path.join(current_path, "*")
+        path = os.path.join(gv.current_path, "*")
         file_list = glob.glob(path)
         for file in file_list:
             filename = os.path.basename(file)
@@ -106,59 +106,53 @@ class MainWindow(QtWidgets.QWidget):
                 list_row.append(item)
             self.file_list.item_model.appendRow(list_row)
 
-        self.path_lineedit.setText(current_path)
+        self.path_lineedit.setText(gv.current_path)
 
     def moveDirectory(self):
-        global current_path, current_moving_index
-        if len(moving_history) > current_moving_index + 1:
-            current_moving_index_ = current_moving_index + 1
-            del moving_history[current_moving_index_:]
-        moving_history.append(current_path)
-        current_moving_index += 1
+        if len(gv.moving_history) > gv.current_moving_index + 1:
+            current_moving_index_ = gv.current_moving_index + 1
+            del gv.moving_history[current_moving_index_:]
+        gv.moving_history.append(gv.current_path)
+        gv.current_moving_index += 1
         self.updateFileList()
 
     def onPathLineEditReturnPressed(self):
-        global current_path
-        current_path = self.path_lineedit.text()
+        gv.current_path = self.path_lineedit.text()
         self.moveDirectory()
 
     def onFileListClicked(self):
-        global current_path
         row = self.file_list.selectedIndexes()[0].row()
         row_content = self.file_list.item_model.item(row, 0).text()
-        filepath = os.path.join(current_path, row_content)
+        filepath = os.path.join(gv.current_path, row_content)
 
         if os.path.isfile(filepath):
             pass
         elif os.path.isdir(filepath):
-            current_path = filepath
+            gv.current_path = filepath
             self.moveDirectory()
 
     def onPlacesListClicked(self):
-        global current_path
         row = self.leftpanel_widget.place_list.list_view.selectedIndexes()[0].row()
-        current_path = os.path.expanduser(places_path_list[row])
+        gv.current_path = os.path.expanduser(places_path_list[row])
         self.moveDirectory()
 
     def onBeforeButtonClicked(self):
-        global current_path, current_moving_index
-        if (len(moving_history) <= 1) or current_moving_index < 1:
+        if (len(gv.moving_history) <= 1) or gv.current_moving_index < 1:
             return
-        current_moving_index -= 1
-        current_path = moving_history[current_moving_index]
+        gv.current_moving_index -= 1
+        gv.current_path = gv.moving_history[gv.current_moving_index]
         self.updateFileList()
 
     def onAfterButtonClicked(self):
-        global current_path, current_moving_index
-        if len(moving_history) == current_moving_index + 1:
+        if len(gv.moving_history) == gv.current_moving_index + 1:
             return
-        current_moving_index += 1
-        current_path = moving_history[current_moving_index]
+        gv.current_moving_index += 1
+        gv.current_path = gv.moving_history[gv.current_moving_index]
         self.updateFileList()
 
     def onGroupsWidgetComboBoxChanged(self):
         self.leftpanel_widget.groups_widget.list_view.item_model.clear()
-        path = os.path.join(current_path, "*")
+        path = os.path.join(gv.current_path, "*")
         file_list = glob.glob(path)
         file_list = list(filter(lambda x: os.path.isfile(x), file_list))
         file_list = list(map(lambda x: os.path.basename(x), file_list))
